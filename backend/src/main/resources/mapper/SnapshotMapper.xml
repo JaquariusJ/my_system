@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.assetmanager.mapper.SnapshotMapper">
+    <resultMap id="SnapshotResultMap" type="com.example.assetmanager.domain.MonthlySnapshot">
+        <id column="id" property="id"/>
+        <result column="account_id" property="accountId"/>
+        <result column="snapshot_month" property="snapshotMonth"/>
+        <result column="amount" property="amount"/>
+        <result column="note" property="note"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="findByMonth" resultMap="SnapshotResultMap">
+        select *
+        from monthly_snapshots
+        where snapshot_month = #{snapshotMonth}
+        order by account_id
+    </select>
+
+    <select id="findAccountSnapshots" resultType="com.example.assetmanager.dto.AccountSnapshotView">
+        select a.id as account_id,
+               a.name,
+               a.institution,
+               a.asset_category,
+               a.investment_type,
+               a.risk_level,
+               s.amount as amount,
+               s.note
+        from monthly_snapshots s
+        join accounts a on a.id = s.account_id
+        where a.active = 1
+          and s.snapshot_month = #{snapshotMonth}
+        order by a.asset_category, a.investment_type, a.institution, a.name
+    </select>
+
+    <insert id="upsert">
+        insert into monthly_snapshots (account_id, snapshot_month, amount, note)
+        values (#{accountId}, #{snapshotMonth}, #{amount}, #{note})
+        on duplicate key update amount = values(amount), note = values(note)
+    </insert>
+
+    <delete id="delete">
+        delete from monthly_snapshots where id = #{id}
+    </delete>
+
+    <select id="findSnapshotMonths" resultType="string">
+        select date_format(snapshot_month, '%Y-%m')
+        from monthly_snapshots
+        group by snapshot_month
+        order by snapshot_month
+    </select>
+
+    <select id="findAssetLiabilityTrend" resultType="com.example.assetmanager.dto.ChartPoint">
+        select date_format(s.snapshot_month, '%Y-%m') as month,
+               a.asset_category as name,
+               sum(s.amount) as value
+        from monthly_snapshots s
+        join accounts a on a.id = s.account_id
+        where s.snapshot_month between #{startMonth} and #{endMonth}
+        group by s.snapshot_month, a.asset_category
+        order by s.snapshot_month, a.asset_category
+    </select>
+
+    <select id="findInvestmentTypeTrend" resultType="com.example.assetmanager.dto.ChartPoint">
+        select date_format(s.snapshot_month, '%Y-%m') as month,
+               coalesce(nullif(a.investment_type, ''), '未设置') as name,
+               sum(s.amount) as value
+        from monthly_snapshots s
+        join accounts a on a.id = s.account_id
+        where s.snapshot_month between #{startMonth} and #{endMonth}
+        <if test="assetCategory != null and assetCategory != ''">
+            and a.asset_category = #{assetCategory}
+        </if>
+        group by s.snapshot_month, coalesce(nullif(a.investment_type, ''), '未设置')
+        order by s.snapshot_month, coalesce(nullif(a.investment_type, ''), '未设置')
+    </select>
+
+    <select id="findRiskTrend" resultType="com.example.assetmanager.dto.ChartPoint">
+        select date_format(s.snapshot_month, '%Y-%m') as month,
+               coalesce(a.risk_level, '未设置') as name,
+               sum(s.amount) as value
+        from monthly_snapshots s
+        join accounts a on a.id = s.account_id
+        where s.snapshot_month between #{startMonth} and #{endMonth}
+        <if test="assetCategory != null and assetCategory != ''">
+            and a.asset_category = #{assetCategory}
+        </if>
+        group by s.snapshot_month, coalesce(a.risk_level, '未设置')
+        order by s.snapshot_month, coalesce(a.risk_level, '未设置')
+    </select>
+
+    <select id="findInvestmentTypeDistribution" resultType="com.example.assetmanager.dto.DistributionPoint">
+        select coalesce(nullif(a.investment_type, ''), '未设置') as name,
+               sum(s.amount) as value,
+               round(sum(s.amount) / nullif(total.total_amount, 0) * 100, 2) as percent
+        from monthly_snapshots s
+        join accounts a on a.id = s.account_id
+        join (
+            select sum(s2.amount) as total_amount
+            from monthly_snapshots s2
+            join accounts a2 on a2.id = s2.account_id
+            where s2.snapshot_month = #{snapshotMonth}
+            <if test="assetCategory != null and assetCategory != ''">
+                and a2.asset_category = #{assetCategory}
+            </if>
+        ) total
+        where s.snapshot_month = #{snapshotMonth}
+        <if test="assetCategory != null and assetCategory != ''">
+            and a.asset_category = #{assetCategory}
+        </if>
+        group by coalesce(nullif(a.investment_type, ''), '未设置'), total.total_amount
+        order by value desc
+    </select>
+
+    <select id="findRiskDistribution" resultType="com.example.assetmanager.dto.DistributionPoint">
+        select coalesce(a.risk_level, '未设置') as name,
+               sum(s.amount) as value,
+               round(sum(s.amount) / nullif(total.total_amount, 0) * 100, 2) as percent
+        from monthly_snapshots s
+        join accounts a on a.id = s.account_id
+        join (
+            select sum(s2.amount) as total_amount
+            from monthly_snapshots s2
+            join accounts a2 on a2.id = s2.account_id
+            where s2.snapshot_month = #{snapshotMonth}
+            <if test="assetCategory != null and assetCategory != ''">
+                and a2.asset_category = #{assetCategory}
+            </if>
+        ) total
+        where s.snapshot_month = #{snapshotMonth}
+        <if test="assetCategory != null and assetCategory != ''">
+            and a.asset_category = #{assetCategory}
+        </if>
+        group by coalesce(a.risk_level, '未设置'), total.total_amount
+        order by value desc
+    </select>
+</mapper>

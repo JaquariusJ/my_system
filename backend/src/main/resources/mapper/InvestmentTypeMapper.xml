@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.assetmanager.mapper.InvestmentTypeMapper">
+    <resultMap id="InvestmentTypeResultMap" type="com.example.assetmanager.domain.InvestmentType">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="risk_level" property="riskLevel"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="remark" property="remark"/>
+        <result column="active" property="active"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="InvestmentTypeResultMap">
+        select *
+        from investment_types
+        order by created_at desc, id desc
+    </select>
+
+    <select id="findActiveNames" resultType="string">
+        select name
+        from investment_types
+        where active = 1
+        order by created_at desc, id desc
+    </select>
+
+    <select id="findById" resultMap="InvestmentTypeResultMap">
+        select *
+        from investment_types
+        where id = #{id}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        insert into investment_types (name, risk_level, sort_order, remark, active)
+        values (#{name}, #{riskLevel}, 100, #{remark}, true)
+    </insert>
+
+    <update id="update">
+        update investment_types
+        set name = #{name},
+            risk_level = #{riskLevel},
+            remark = #{remark},
+            active = true
+        where id = #{id}
+    </update>
+
+    <select id="countAccountsByName" resultType="int">
+        select count(*)
+        from accounts
+        where investment_type = #{name}
+    </select>
+
+    <update id="updateAccountInvestmentType">
+        update accounts
+        set investment_type = #{newName}
+        where investment_type = #{oldName}
+    </update>
+
+    <update id="updateAccountRiskLevel">
+        update accounts
+        set risk_level = #{riskLevel}
+        where investment_type = #{investmentType}
+    </update>
+
+    <delete id="delete">
+        delete from investment_types
+        where id = #{id}
+    </delete>
+</mapper>

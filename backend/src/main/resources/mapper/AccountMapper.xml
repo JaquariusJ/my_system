@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.assetmanager.mapper.AccountMapper">
+    <resultMap id="AccountResultMap" type="com.example.assetmanager.domain.Account">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="institution" property="institution"/>
+        <result column="account_no_masked" property="accountNoMasked"/>
+        <result column="asset_category" property="assetCategory"/>
+        <result column="investment_type" property="investmentType"/>
+        <result column="risk_level" property="riskLevel"/>
+        <result column="custom_fields" property="customFields"/>
+        <result column="remark" property="remark"/>
+        <result column="active" property="active"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="AccountResultMap">
+        select *
+        from accounts
+        <where>
+            <if test="activeOnly">
+                active = 1
+            </if>
+        </where>
+        order by asset_category, investment_type, institution, name
+    </select>
+
+    <select id="findById" resultMap="AccountResultMap">
+        select * from accounts where id = #{id}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        insert into accounts (
+            name, institution, account_no_masked, asset_category, investment_type,
+            risk_level, custom_fields, remark, active
+        )
+        values (
+            #{name}, #{institution}, #{accountNoMasked}, #{assetCategory}, #{investmentType},
+            #{riskLevel}, #{customFields}, #{remark}, #{active}
+        )
+    </insert>
+
+    <update id="update">
+        update accounts
+        set name = #{name},
+            institution = #{institution},
+            account_no_masked = #{accountNoMasked},
+            asset_category = #{assetCategory},
+            investment_type = #{investmentType},
+            risk_level = #{riskLevel},
+            custom_fields = #{customFields},
+            remark = #{remark},
+            active = #{active}
+        where id = #{id}
+    </update>
+
+    <delete id="delete">
+        delete from accounts where id = #{id}
+    </delete>
+
+    <select id="findInvestmentTypes" resultType="string">
+        select name
+        from investment_types
+        where active = 1
+        order by created_at desc, id desc
+    </select>
+</mapper>
